@@ -24,7 +24,7 @@
         <Button android:id="@+id/k_z" style="@style/KeyButton" android:text="z"/><Button android:id="@+id/k_x" style="@style/KeyButton" android:text="x"/><Button android:id="@+id/k_c" style="@style/KeyButton" android:text="c"/><Button android:id="@+id/k_v" style="@style/KeyButton" android:text="v"/><Button android:id="@+id/k_b" style="@style/KeyButton" android:text="b"/><Button android:id="@+id/k_n" style="@style/KeyButton" android:text="n"/><Button android:id="@+id/k_m" style="@style/KeyButton" android:text="m"/>
     </LinearLayout>
     <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
-        <Button android:id="@+id/key_comma" style="@style/KeyButton" android:text=","/>\n        <Button android:id="@+id/key_paste" style="@style/KeyButton" android:text="Paste Scan" android:textSize="11sp"/>
+        <Button android:id="@+id/key_comma" style="@style/KeyButton" android:text=","/>\n        <Button android:id="@+id/key_paste" style="@style/KeyButton" android:text="Paste" android:textSize="11sp"/>\n        <Button android:id="@+id/key_fill" style="@style/KeyButton" android:text="Fill" android:textSize="11sp"/>
         <Button android:id="@+id/key_spacebar" style="@style/KeyButton" android:layout_weight="4" android:text="Space"/>
         <Button android:id="@+id/key_period" style="@style/KeyButton" android:text="."/>
         <Button android:id="@+id/key_delete" style="@style/KeyButton" android:text="⌫"/>

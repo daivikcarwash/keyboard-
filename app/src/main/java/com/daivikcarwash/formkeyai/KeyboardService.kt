@@ -118,4 +118,39 @@ class KeyboardService : InputMethodService() {
         refreshSuggestions()
         return view
     }
-}
+}    private fun fillMatchingField() {
+        val info = currentInputEditorInfo
+        val hint = (info?.hintText?.toString() ?: "").lowercase()
+        val prefs = getSharedPreferences("formkey_scan", Context.MODE_PRIVATE)
+        val fields = prefs.all.filterKeys { it != "raw_text" }.toSortedMap()
+        if (fields.isEmpty()) {
+            currentInputConnection?.commitText("", 1)
+            return
+        }
+        val aliases = listOf(
+            listOf("name", "नाम") to listOf("Name", "Possible Name (verify)"),
+            listOf("father", "पिता") to listOf("Father Name"),
+            listOf("address", "पता") to listOf("Address"),
+            listOf("mobile", "phone", "मोबाइल") to listOf("Mobile Number"),
+            listOf("email", "ईमेल") to listOf("Email"),
+            listOf("dob", "birth", "जन्म") to listOf("Date of Birth"),
+            listOf("gender", "sex", "लिंग") to listOf("Gender"),
+            listOf("pin", "postal", "zip") to listOf("PIN Code"),
+            listOf("pan") to listOf("PAN Number"),
+            listOf("aadhaar", "aadhar", "uid") to listOf("Aadhaar Number"),
+            listOf("passport") to listOf("Passport Number"),
+            listOf("licence", "license", "dl") to listOf("Driving Licence")
+        )
+        val matched = aliases.firstOrNull { (words, _) -> words.any { hint.contains(it) } }
+            ?.second?.firstNotNullOfOrNull { fields[it] as? String }
+        val selected = matched ?: run {
+            val keys = fields.keys.toList()
+            val index = prefs.getInt("fill_index", 0).mod(keys.size)
+            prefs.edit().putInt("fill_index", (index + 1) % keys.size).apply()
+            fields[keys[index]] as? String
+        }
+        if (!selected.isNullOrBlank()) {
+            currentInputConnection?.commitText(selected, 1)
+        }
+    }
+}\n

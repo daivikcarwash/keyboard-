@@ -1,8 +1,12 @@
 package com.daivikcarwash.formkeyai
 
-import android.content.ClipDescription\nimport android.content.ClipboardManager\nimport android.content.Context\nimport android.content.Intent\nimport android.inputmethodservice.InputMethodService
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.inputmethodservice.InputMethodService
 import android.view.View
-import android.view.inputmethod.EditorInfo\nimport android.view.inputmethod.InputConnection
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 
 class KeyboardService : InputMethodService() {
@@ -18,8 +22,6 @@ class KeyboardService : InputMethodService() {
         R.id.k_x to "x", R.id.k_c to "c", R.id.k_v to "v", R.id.k_b to "b",
         R.id.k_n to "n", R.id.k_m to "m"
     )
-
-    // Basic Hindi character layout. This is direct Devanagari input, not transliteration.
     private val hindiKeys = mapOf(
         R.id.k_q to "ौ", R.id.k_w to "ै", R.id.k_e to "ा", R.id.k_r to "ी",
         R.id.k_t to "ू", R.id.k_y to "ब", R.id.k_u to "ह", R.id.k_i to "ग",
@@ -29,22 +31,17 @@ class KeyboardService : InputMethodService() {
         R.id.k_x to "म", R.id.k_c to "न", R.id.k_v to "व", R.id.k_b to "ल",
         R.id.k_n to "स", R.id.k_m to "य"
     )
-
-    private val suggestions = listOf(
-        "hello", "help", "good", "thanks", "thank", "please", "today", "tomorrow",
-        "नमस्ते", "धन्यवाद", "भारत", "मेरा", "आप", "है", "हैं", "करना", "कैसे"
-    )
+    private val suggestions = listOf("hello", "help", "good", "thanks", "thank", "please", "today", "tomorrow", "नमस्ते", "धन्यवाद", "भारत", "मेरा", "आप", "है", "हैं", "करना", "कैसे")
 
     override fun onCreateInputView(): View {
         val view = layoutInflater.inflate(R.layout.keyboard_view, null)
-        val keyButtons = (englishKeys.keys).associateWith { view.findViewById<Button>(it) }
+        val keyButtons = englishKeys.keys.associateWith { view.findViewById<Button>(it) }
 
         fun refreshSuggestions() {
-            val row = typed.toString()
-            val matches = if (row.isBlank()) listOf("FormKey", "नमस्ते", "Hello")
-                else suggestions.filter { it.startsWith(row, ignoreCase = true) && it != row }.take(3)
-            val ids = listOf(R.id.suggestion_one, R.id.suggestion_two, R.id.suggestion_three)
-            ids.forEachIndexed { index, id ->
+            val word = typed.toString()
+            val matches = if (word.isBlank()) listOf("FormKey", "नमस्ते", "Hello")
+                else suggestions.filter { it.startsWith(word, ignoreCase = true) && it != word }.take(3)
+            listOf(R.id.suggestion_one, R.id.suggestion_two, R.id.suggestion_three).forEachIndexed { index, id ->
                 val button = view.findViewById<Button>(id)
                 val value = matches.getOrNull(index).orEmpty()
                 button.text = value
@@ -58,14 +55,10 @@ class KeyboardService : InputMethodService() {
                 }
             }
         }
-
         fun updateLanguage() {
             view.findViewById<Button>(R.id.key_space).text = if (hindiMode) "हिंदी" else "English"
-            keyButtons.forEach { (id, button) ->
-                button.text = if (hindiMode) hindiKeys[id] ?: "" else englishKeys[id] ?: ""
-            }
+            keyButtons.forEach { (id, button) -> button.text = if (hindiMode) hindiKeys[id] ?: "" else englishKeys[id] ?: "" }
         }
-
         keyButtons.forEach { (id, button) ->
             button.setOnClickListener {
                 val value = if (hindiMode) hindiKeys[id] else englishKeys[id]
@@ -76,7 +69,6 @@ class KeyboardService : InputMethodService() {
                 }
             }
         }
-
         view.findViewById<Button>(R.id.key_space).setOnClickListener {
             hindiMode = !hindiMode
             typed.clear()
@@ -88,15 +80,23 @@ class KeyboardService : InputMethodService() {
             typed.clear()
             refreshSuggestions()
         }
-        view.findViewById<Button>(R.id.key_scan).setOnClickListener {\n            val launch = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)\n            startActivity(launch)\n        }\n        view.findViewById<Button>(R.id.key_fill).setOnClickListener {\n            fillMatchingField()\n        }\n        view.findViewById<Button>(R.id.key_paste).setOnClickListener {\n            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager\n            val clip = clipboard.primaryClip\n            if (clip != null && clip.itemCount > 0) {\n                val value = clip.getItemAt(0).coerceToText(this)\n                if (!value.isNullOrEmpty()) currentInputConnection?.commitText(value, 1)\n            }\n        }\n        view.findViewById<Button>(R.id.key_comma).setOnClickListener {
-            currentInputConnection?.commitText(",", 1)
-            typed.clear()
-            refreshSuggestions()
+        view.findViewById<Button>(R.id.key_scan).setOnClickListener {
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        view.findViewById<Button>(R.id.key_fill).setOnClickListener { fillMatchingField() }
+        view.findViewById<Button>(R.id.key_paste).setOnClickListener {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = clipboard.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                val value = clip.getItemAt(0).coerceToText(this)
+                if (!value.isNullOrEmpty()) currentInputConnection?.commitText(value, 1)
+            }
+        }
+        view.findViewById<Button>(R.id.key_comma).setOnClickListener {
+            currentInputConnection?.commitText(",", 1); typed.clear(); refreshSuggestions()
         }
         view.findViewById<Button>(R.id.key_period).setOnClickListener {
-            currentInputConnection?.commitText(".", 1)
-            typed.clear()
-            refreshSuggestions()
+            currentInputConnection?.commitText(".", 1); typed.clear(); refreshSuggestions()
         }
         view.findViewById<Button>(R.id.key_delete).setOnClickListener {
             currentInputConnection?.deleteSurroundingText(1, 0)
@@ -105,28 +105,21 @@ class KeyboardService : InputMethodService() {
         }
         view.findViewById<Button>(R.id.key_enter).setOnClickListener {
             val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
-            if (action != null && action != EditorInfo.IME_ACTION_NONE) {
-                currentInputConnection?.performEditorAction(action)
-            } else {
-                currentInputConnection?.commitText("\n", 1)
-            }
+            if (action != null && action != EditorInfo.IME_ACTION_NONE) currentInputConnection?.performEditorAction(action)
+            else currentInputConnection?.commitText("\n", 1)
             typed.clear()
             refreshSuggestions()
         }
-
         updateLanguage()
         refreshSuggestions()
         return view
     }
-}    private fun fillMatchingField() {
-        val info = currentInputEditorInfo
-        val hint = (info?.hintText?.toString() ?: "").lowercase()
+
+    private fun fillMatchingField() {
+        val hint = (currentInputEditorInfo?.hintText?.toString() ?: "").lowercase()
         val prefs = getSharedPreferences("formkey_scan", Context.MODE_PRIVATE)
         val fields = prefs.all.filterKeys { it != "raw_text" }.toSortedMap()
-        if (fields.isEmpty()) {
-            currentInputConnection?.commitText("", 1)
-            return
-        }
+        if (fields.isEmpty()) return
         val aliases = listOf(
             listOf("name", "नाम") to listOf("Name", "Possible Name (verify)"),
             listOf("father", "पिता") to listOf("Father Name"),
@@ -149,8 +142,6 @@ class KeyboardService : InputMethodService() {
             prefs.edit().putInt("fill_index", (index + 1) % keys.size).apply()
             fields[keys[index]] as? String
         }
-        if (!selected.isNullOrBlank()) {
-            currentInputConnection?.commitText(selected, 1)
-        }
+        if (!selected.isNullOrBlank()) currentInputConnection?.commitText(selected, 1)
     }
-}\n
+}

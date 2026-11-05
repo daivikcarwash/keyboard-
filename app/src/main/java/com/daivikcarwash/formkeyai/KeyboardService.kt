@@ -84,7 +84,10 @@ class KeyboardService : InputMethodService() {
         view.findViewById<Button>(R.id.key_scan).setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
-        view.findViewById<Button>(R.id.key_fill).setOnClickListener { fillMatchingField() }
+        view.findViewById<Button>(R.id.key_fill).setOnClickListener {
+            Toast.makeText(this, "Fill button working", Toast.LENGTH_SHORT).show()
+            fillMatchingField()
+        }
         view.findViewById<Button>(R.id.key_paste).setOnClickListener {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = clipboard.primaryClip
@@ -119,10 +122,9 @@ class KeyboardService : InputMethodService() {
     private fun fillMatchingField() {
         val connection = currentInputConnection
         if (connection == null) {
-            Toast.makeText(this, "Pehle form ke text box par tap karein.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Pehle form ke text box par tap karein.", Toast.LENGTH_LONG).show()
             return
         }
-        val hint = (currentInputEditorInfo?.hintText?.toString() ?: "").lowercase()
         val prefs = getSharedPreferences("formkey_scan", Context.MODE_PRIVATE)
         val fields = prefs.all
             .filterKeys { it != "raw_text" && it != "fill_index" }
@@ -130,10 +132,11 @@ class KeyboardService : InputMethodService() {
             .sortedBy { it.first }
 
         if (fields.isEmpty()) {
-            Toast.makeText(this, "Pehle Scan Any Document se document scan karein.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Scan details nahi mile. App kholkar dobara scan karein.", Toast.LENGTH_LONG).show()
             return
         }
 
+        val hint = (currentInputEditorInfo?.hintText?.toString() ?: "").lowercase()
         val aliases = listOf(
             listOf("name", "नाम") to listOf("Name", "Possible Name (verify)"),
             listOf("father", "पिता") to listOf("Father Name"),
@@ -156,13 +159,11 @@ class KeyboardService : InputMethodService() {
             return
         }
 
-        // Many apps and websites do not expose a field hint to Android.
-        // In that case, let the user choose the exact scanned value instead of guessing.
-        val labels = fields.map { (label, value) -> "$label  —  $value" }.toTypedArray()
+        val labels = fields.map { (label, value) -> "$label — $value" }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("Choose detail to fill")
             .setItems(labels) { _, which ->
-                fields.getOrNull(which)?.second?.let { connection.commitText(it, 1) }
+                fields.getOrNull(which)?.second?.let { currentInputConnection?.commitText(it, 1) }
             }
             .setNegativeButton("Cancel", null)
             .show()

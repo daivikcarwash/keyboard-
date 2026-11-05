@@ -2,9 +2,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:background="#E8ECF3" android:orientation="vertical" android:padding="5dp">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="38dp" android:orientation="horizontal">
+        <Button android:id="@+id/suggestion_one" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:minWidth="0dp" android:text="FormKey" android:textAllCaps="false" android:textSize="12sp"/>
+        <Button android:id="@+id/suggestion_two" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:minWidth="0dp" android:text="नमस्ते" android:textAllCaps="false" android:textSize="12sp"/>
+        <Button android:id="@+id/suggestion_three" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:minWidth="0dp" android:text="Hello" android:textAllCaps="false" android:textSize="12sp"/>
+    </LinearLayout>
+
     <LinearLayout android:layout_width="match_parent" android:layout_height="42dp" android:orientation="horizontal">
         <Button android:id="@+id/key_symbols" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="123" />
-        <Button android:id="@+id/key_space" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="3" android:text="English" />
+        <Button android:id="@+id/key_space" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="3" android:text="English" android:textAllCaps="false"/>
         <Button android:id="@+id/key_enter" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="↵" />
     </LinearLayout>
     <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
@@ -18,7 +25,7 @@
     </LinearLayout>
     <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
         <Button android:id="@+id/key_comma" style="@style/KeyButton" android:text=","/>
-        <Button android:id="@+id/key_spacebar" style="@style/KeyButton" android:layout_weight="4" android:text="English (US)"/>
+        <Button android:id="@+id/key_spacebar" style="@style/KeyButton" android:layout_weight="4" android:text="Space"/>
         <Button android:id="@+id/key_period" style="@style/KeyButton" android:text="."/>
         <Button android:id="@+id/key_delete" style="@style/KeyButton" android:text="⌫"/>
     </LinearLayout>

@@ -1,6 +1,6 @@
 package com.daivikcarwash.formkeyai
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -23,7 +23,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private lateinit var content: LinearLayout
     private val prefs by lazy { getSharedPreferences("formkey_scan", Context.MODE_PRIVATE) }
     private val scannerLauncher = registerForActivityResult(

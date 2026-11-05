@@ -2,7 +2,7 @@ package com.daivikcarwash.formkeyai
 
 import android.content.ClipDescription\nimport android.content.ClipboardManager\nimport android.content.Context\nimport android.content.Intent\nimport android.inputmethodservice.InputMethodService
 import android.view.View
-import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.EditorInfo\nimport android.view.inputmethod.InputConnection
 import android.widget.Button
 
 class KeyboardService : InputMethodService() {
@@ -88,7 +88,7 @@ class KeyboardService : InputMethodService() {
             typed.clear()
             refreshSuggestions()
         }
-        view.findViewById<Button>(R.id.key_scan).setOnClickListener {\n            val launch = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)\n            startActivity(launch)\n        }\n        view.findViewById<Button>(R.id.key_paste).setOnClickListener {\n            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager\n            val clip = clipboard.primaryClip\n            if (clip != null && clip.itemCount > 0) {\n                val value = clip.getItemAt(0).coerceToText(this)\n                if (!value.isNullOrEmpty()) currentInputConnection?.commitText(value, 1)\n            }\n        }\n        view.findViewById<Button>(R.id.key_comma).setOnClickListener {
+        view.findViewById<Button>(R.id.key_scan).setOnClickListener {\n            val launch = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)\n            startActivity(launch)\n        }\n        view.findViewById<Button>(R.id.key_fill).setOnClickListener {\n            fillMatchingField()\n        }\n        view.findViewById<Button>(R.id.key_paste).setOnClickListener {\n            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager\n            val clip = clipboard.primaryClip\n            if (clip != null && clip.itemCount > 0) {\n                val value = clip.getItemAt(0).coerceToText(this)\n                if (!value.isNullOrEmpty()) currentInputConnection?.commitText(value, 1)\n            }\n        }\n        view.findViewById<Button>(R.id.key_comma).setOnClickListener {
             currentInputConnection?.commitText(",", 1)
             typed.clear()
             refreshSuggestions()

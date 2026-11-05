@@ -25,6 +25,7 @@ import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 
 class MainActivity : Activity() {
     private lateinit var content: LinearLayout
+    private val prefs by lazy { getSharedPreferences("formkey_scan", Context.MODE_PRIVATE) }
     private val scannerLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -50,7 +51,7 @@ class MainActivity : Activity() {
             setTextColor(0xFF172554.toInt())
         })
         root.addView(TextView(this).apply {
-            text = "Scan a document, review the details, then copy a field into any form."
+            text = "Scan documents, review extracted fields and fill forms one field at a time."
             textSize = 15f
             setPadding(0, 8, 0, 16)
         })
@@ -63,11 +64,19 @@ class MainActivity : Activity() {
             text = "Enable FormKey AI keyboard"
             setOnClickListener { startActivity(Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS)) }
         })
+        root.addView(Button(this).apply {
+            text = "Clear saved scan details"
+            setOnClickListener {
+                prefs.edit().clear().apply()
+                showMessage("Saved scan details cleared from this app.")
+            }
+        })
         val scroll = ScrollView(this)
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
+        showSavedFields()
     }
 
     private fun startScanner() {
@@ -101,28 +110,55 @@ class MainActivity : Activity() {
             }
             try {
                 val image = InputImage.fromFilePath(this, uris[index])
-                latin.process(image)
-                    .addOnSuccessListener { latinText ->
-                        devanagari.process(image)
-                            .addOnSuccessListener { hindiText ->
-                                val combined = (latinText.text + "\n" + hindiText.text)
-                                    .lines().map { it.trim() }.filter { it.isNotBlank() }.distinct()
-                                output.append(combined.joinToString("\n")).append("\n")
-                                process(index + 1)
-                            }
-                            .addOnFailureListener {
-                                output.append(latinText.text).append("\n")
-                                process(index + 1)
-                            }
-                    }
-                    .addOnFailureListener {
+                latin.process(image).addOnSuccessListener { latinText ->
+                    devanagari.process(image).addOnSuccessListener { hindiText ->
+                        val lines = (latinText.text + "\n" + hindiText.text)
+                            .lines().map { it.trim() }.filter { it.isNotBlank() }.distinct()
+                        output.append(lines.joinToString("\n")).append("\n")
+                        process(index + 1)
+                    }.addOnFailureListener {
+                        output.append(latinText.text).append("\n")
                         process(index + 1)
                     }
-            } catch (e: Exception) {
-                process(index + 1)
-            }
+                }.addOnFailureListener { process(index + 1) }
+            } catch (_: Exception) { process(index + 1) }
         }
         process(0)
+    }
+
+    private fun extractFields(raw: String): LinkedHashMap<String, String> {
+        val text = raw.replace("\r", "\n")
+        val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
+        val result = linkedMapOf<String, String>()
+        fun capture(label: String, regex: Regex, key: String = label) {
+            val match = regex.find(text)
+            if (match != null) result[key] = match.groupValues.last().trim().trim(':', '-', ' ')
+        }
+        capture("Aadhaar Number", Regex("(?<!\\d)(\\d{4}\\s?\\d{4}\\s?\\d{4})(?!\\d)"))
+        capture("PAN Number", Regex("\\b([A-Z]{5}\\d{4}[A-Z])\\b", RegexOption.IGNORE_CASE))
+        capture("Mobile Number", Regex("(?<!\\d)([6-9]\\d{9})(?!\\d)"))
+        capture("Email", Regex("([A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,})", RegexOption.IGNORE_CASE))
+        capture("PIN Code", Regex("(?<!\\d)(\\d{6})(?!\\d)"))
+        capture("Date of Birth", Regex("(?:DOB|Date of Birth|Birth Date|जन्म तिथि)\\s*[:/-]?\\s*([0-3]?\\d[./-][01]?\\d[./-](?:19|20)?\\d{2})", RegexOption.IGNORE_CASE))
+        capture("Driving Licence", Regex("(?:DL|Driving Licence|License No\\.?)[\\s:#-]*([A-Z]{2}\\d{2}\\s?\\d{4}\\s?\\d{7,})", RegexOption.IGNORE_CASE))
+        capture("Passport Number", Regex("(?:Passport No\\.?|Passport Number)[\\s:#-]*([A-Z][0-9]{7})", RegexOption.IGNORE_CASE))
+        val labelRules = listOf(
+            "Name" to Regex("(?:Name|नाम)\\s*[:：-]\\s*([^\\n]{2,60})", RegexOption.IGNORE_CASE),
+            "Father Name" to Regex("(?:Father'?s Name|Father Name|पिता का नाम)\\s*[:：-]\\s*([^\\n]{2,60})", RegexOption.IGNORE_CASE),
+            "Address" to Regex("(?:Address|पता)\\s*[:：-]\\s*([^\\n]{4,160})", RegexOption.IGNORE_CASE),
+            "Gender" to Regex("(?:Gender|Sex|लिंग)\\s*[:：-]\\s*(Male|Female|Other|पुरुष|महिला)", RegexOption.IGNORE_CASE)
+        )
+        labelRules.forEach { (key, regex) ->
+            regex.find(text)?.groupValues?.getOrNull(1)?.trim()?.let { result[key] = it }
+        }
+        if (!result.containsKey("Name")) {
+            val likely = lines.firstOrNull { line ->
+                line.length in 4..45 && line.matches(Regex("[A-Za-z][A-Za-z .'-]+")) &&
+                    !line.contains(Regex("government|india|unique|authority|income|tax", RegexOption.IGNORE_CASE))
+            }
+            if (likely != null) result["Possible Name (verify)"] = likely
+        }
+        return result
     }
 
     private fun showExtracted(raw: String) {
@@ -131,6 +167,11 @@ class MainActivity : Activity() {
             showMessage("Text was not detected. Try a clearer, well-lit scan.")
             return
         }
+        val fields = extractFields(raw)
+        val safeFields = fields.filterValues { it.isNotBlank() }
+        prefs.edit().clear().putString("raw_text", raw).apply {
+            safeFields.forEach { (key, value) -> putString(key, value) }
+        }
         val title = TextView(this).apply {
             text = "Review extracted details"
             textSize = 20f
@@ -138,48 +179,58 @@ class MainActivity : Activity() {
             setPadding(0, 8, 0, 8)
         }
         content.addView(title)
-        val hint = TextView(this).apply {
-            text = "Tap Copy beside a value, then tap the target field and use Paste Scan on the keyboard. Check every value before submitting."
+        content.addView(TextView(this).apply {
+            text = "OCR may misread characters. Verify every value. Tap Fill on the keyboard only after focusing the matching form field."
             textSize = 14f
             setPadding(0, 0, 0, 12)
+        })
+        if (safeFields.isEmpty()) {
+            content.addView(TextView(this).apply { text = "No common labelled fields were confidently detected. You can copy the full OCR text below." })
         }
-        content.addView(hint)
-        val lines = raw.lines().map { it.trim() }.filter { it.length >= 2 }.distinct()
-        lines.take(60).forEach { line ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(8, 5, 8, 5)
-                setBackgroundColor(0xFFFFFFFF.toInt())
-            }
-            row.addView(TextView(this).apply {
-                text = line
-                textSize = 15f
-                setTextColor(0xFF172554.toInt())
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(Button(this).apply {
-                text = "Copy"
-                setOnClickListener { copyText(line) }
-            })
-            val params = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            params.bottomMargin = 5
-            content.addView(row, params)
-        }
+        safeFields.forEach { (key, value) -> addFieldRow(key, value) }
         content.addView(Button(this).apply {
             text = "Copy all scanned text"
-            setOnClickListener { copyText(lines.joinToString("\n")) }
+            setOnClickListener { copyText(raw) }
         })
         content.addView(TextView(this).apply {
-            text = "\nRaw OCR text\n\n" + lines.joinToString("\n")
+            text = "\nFull OCR text\n\n$raw"
             textSize = 13f
             setTextColor(0xFF475569.toInt())
         })
     }
 
+    private fun showSavedFields() {
+        val keys = prefs.all.keys.filter { it != "raw_text" }.sorted()
+        if (keys.isEmpty()) {
+            showMessage("No scan yet. Tap Scan any document to begin.")
+            return
+        }
+        content.removeAllViews()
+        content.addView(TextView(this).apply { text = "Saved scan details"; textSize = 20f; setTypeface(null, Typeface.BOLD) })
+        keys.forEach { key -> prefs.getString(key, null)?.let { addFieldRow(key, it) } }
+    }
+
+    private fun addFieldRow(key: String, value: String) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(10, 8, 10, 8)
+            setBackgroundColor(0xFFFFFFFF.toInt())
+        }
+        row.addView(TextView(this).apply { text = key; textSize = 12f; setTextColor(0xFF64748B.toInt()) })
+        row.addView(TextView(this).apply { text = value; textSize = 16f; setTextColor(0xFF172554.toInt()) })
+        row.addView(Button(this).apply {
+            text = "Copy value"
+            setOnClickListener { copyText(value) }
+        })
+        val params = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        params.bottomMargin = 6
+        content.addView(row, params)
+    }
+
     private fun copyText(value: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("FormKey scanned detail", value))
-        Toast.makeText(this, "Copied. Tap a form field, then Paste Scan.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Copied. Focus the matching form field and tap Fill on FormKey AI.", Toast.LENGTH_SHORT).show()
     }
 
     private fun showMessage(message: String) {
